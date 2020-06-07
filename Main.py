@@ -11,6 +11,8 @@ RED = (255, 0, 0)
 
 general_font = pygame.font.SysFont('Arial', 20)
 
+#TODO: ADD MENU CLASS AVAIABLE FOR 2 PLAYERS AND 1 PLAYERS
+
 class Setting:
 	def __init__(self):
 		self.size = self.WIDTH, self.HEIGHT = 550, 550
@@ -64,6 +66,7 @@ class Grid:
 					  [(200, 100), (200, 550)], #vertical line
 					  [(350, 100), (350, 550)]] #vertical line
 
+		#Centers of the squares made by grids so we can draw easily
 		self.square = [(125, 175), (275, 175), (425, 175),
 					   (125, 325), (275, 325), (425, 325),
 					   (125, 475), (275, 475), (425, 475)]		
@@ -71,6 +74,10 @@ class Grid:
 	def draw_grids(self, screen):
 		for line in self.grids:
 			pygame.draw.line(screen, BLACK, line[0], line[1], 2)
+
+
+class Menu:
+	pass 
 
 
 class Main:
@@ -81,6 +88,7 @@ class Main:
 		self.check_box = [[0, 0, 0],
 						  [0, 0, 0],
 						  [0, 0, 0]]
+		self.turn_swap = False
 	
 	def hit_square(self, mouse_pos):
 		for index, pos in enumerate(self.grid.square):
@@ -189,6 +197,8 @@ class Main:
 
 				if events.type == pygame.MOUSEBUTTONDOWN:
 					if self.hit_restart_button(mouse_pos):
+						#Swap turn every time you hit restart
+						self.turn_swap = self.change_turn(self.turn_swap)
 						restart = False
 
 					if self.hit_reset_button(mouse_pos):
@@ -202,6 +212,8 @@ class Main:
 		self.setting.player_o_score = 0
 		self.setting.player_x_score = 0
 
+	def change_turn(self, turn):
+		return not turn
 
 	def game_loop(self):
 		gameRun = True 
@@ -217,6 +229,9 @@ class Main:
 
 			mouse_pos = pygame.mouse.get_pos()
 			turn_flag = True #Take turns between x and o
+			#If hit restart --> swap turn
+			if self.turn_swap:
+				turn_flag = self.change_turn(turn_flag)
 
 			for events in pygame.event.get():
 				if events.type == pygame.QUIT:
@@ -228,22 +243,23 @@ class Main:
 						self.reset_game()
 
 					if self.hit_square(mouse_pos)[0]:
+						#Get the index of mouse_pos if you hit a square(made by grids)
 						_, current_index = self.hit_square(mouse_pos)
+						#Get the position of the square associated with mouse_pos
 						mouse_pos_clone = self.grid.square[current_index]
 						self.player_pos.append(mouse_pos_clone)
+						#Undo available when you place a move
 						undo_flag = True
 					
 					if self.hit_undo_button(mouse_pos):
 						if len(self.player_pos) > 0:
 							if undo_flag:
 								undo_flag = False
-								print(current_index)
 								self.undo(current_index)
-					
-			print(self.check_box)
+			#remove duplicate(preventing draw x on o or the other way around)
 			self.player_pos = self.non_duplicate(self.player_pos)
 			
-
+			#Draw x and o
 			for pos in self.player_pos:
 				first_index, second_index = self.convert(current_index)
 				if turn_flag:
