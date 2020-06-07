@@ -29,6 +29,18 @@ class Setting:
 		self.screen.blit(player_o, (10, 10))
 		self.screen.blit(player_x, (10, 30))
 
+	def reset_label(self):#reset game, score --> 0
+		button = pygame.draw.rect(self.screen, RED, (450, 10, 90, 40))
+		reset_label = general_font.render("RESET", True, BLACK)
+		reset_label_rect = reset_label.get_rect(topleft=(round(self.WIDTH - 85), 20))
+		self.screen.blit(reset_label, reset_label_rect)
+
+	def undo_label(self):
+		button = pygame.draw.rect(self.screen, RED, (10, 60, 80, 30), )
+		undo_label = general_font.render("Undo", True, BLACK)
+		self.screen.blit(undo_label, [25, 65])
+
+
 	def winning_label(self, win_player):
 		if win_player == 1:
 			win_label = self.winning_font.render("Player O win", True, GREEN, BLACK)
@@ -75,7 +87,7 @@ class Main:
 			if mouse_pos[0] <= pos[0] + 75 and mouse_pos[0] >= pos[0] - 75:
 				if mouse_pos[1] <= pos[1] + 75 and mouse_pos[1] >= pos[1] - 75:
 					return True, index
-		return False, None
+		return False, -1
 
 	def get_winner(self, x, y):
 		if self.check_box[x][y] == 1:
@@ -129,7 +141,7 @@ class Main:
 		self.check_box = [[0, 0, 0] for i in range(3)]
 		self.player_pos = []
 
-	def hit_button(self, mouse_pos):
+	def hit_restart_button(self, mouse_pos):
 		mouse_pos_x, mouse_pos_y = mouse_pos
 
 		if mouse_pos_x > 200 and mouse_pos_x < 200 + 150:
@@ -137,15 +149,38 @@ class Main:
 				return True
 		return False
 
-	def restart(self):
+	def hit_reset_button(self, mouse_pos):
+		mouse_pos_x, mouse_pos_y = mouse_pos
+
+		if mouse_pos_x > 450 and mouse_pos_x < 450 + 90:
+			if mouse_pos_y > 10 and mouse_pos_y < 10 + 40:
+				return True
+		return False
+
+	def hit_undo_button(self, mouse_pos):
+		mouse_pos_x, mouse_pos_y = mouse_pos
+
+		if mouse_pos_x > 10 and mouse_pos_x < 10 + 80:
+			if mouse_pos_y > 60 and mouse_pos_y < 60 + 30:
+				return True
+		return False
+
+	def undo(self, current_index):
+		first_index, second_index = self.convert(current_index)
+
+		self.player_pos.pop()
+		self.check_box[first_index][second_index] = 0
+
+	def restart(self): #Click on restart and add score
 		button = pygame.draw.rect(self.setting.screen, GREEN, (200, 50, 150, 50))
 		restart_label = general_font.render("Restart", True, BLACK)
 		restart_label_rect = restart_label.get_rect(midtop=(round(self.setting.WIDTH / 2), 65))
 		self.setting.screen.blit(restart_label, restart_label_rect) 
 		pygame.display.update()
 
-		res = True
-		while res:
+
+		restart = True
+		while restart:
 			for events in pygame.event.get():
 				mouse_pos = pygame.mouse.get_pos()
 				if events.type == pygame.QUIT:
@@ -153,22 +188,35 @@ class Main:
 					pygame.quit()
 
 				if events.type == pygame.MOUSEBUTTONDOWN:
-					if self.hit_button(mouse_pos):
-						res = False
+					if self.hit_restart_button(mouse_pos):
+						restart = False
+
+					if self.hit_reset_button(mouse_pos):
+						self.reset_game()
+						restart = False
 
 		self.reset()
+
+	def reset_game(self):
+		self.reset()
+		self.setting.player_o_score = 0
+		self.setting.player_x_score = 0
+
 
 	def game_loop(self):
 		gameRun = True 
 		count = 1
+		undo_flag = True
 
 		while gameRun:
-			flag = True
-
 			self.setting.draw_screen()
 			self.setting.score_label()
 			self.grid.draw_grids(self.setting.screen)
+			self.setting.undo_label()
+			self.setting.reset_label()
+
 			mouse_pos = pygame.mouse.get_pos()
+			turn_flag = True #Take turns between x and o
 
 			for events in pygame.event.get():
 				if events.type == pygame.QUIT:
@@ -176,30 +224,44 @@ class Main:
 					pygame.quit()
 
 				if events.type == pygame.MOUSEBUTTONDOWN:
+					if self.hit_reset_button(mouse_pos):
+						self.reset_game()
+
 					if self.hit_square(mouse_pos)[0]:
 						_, current_index = self.hit_square(mouse_pos)
 						mouse_pos_clone = self.grid.square[current_index]
 						self.player_pos.append(mouse_pos_clone)
-			
+						undo_flag = True
+					
+					if self.hit_undo_button(mouse_pos):
+						if len(self.player_pos) > 0:
+							if undo_flag:
+								undo_flag = False
+								print(current_index)
+								self.undo(current_index)
+					
+			print(self.check_box)
 			self.player_pos = self.non_duplicate(self.player_pos)
-
+			
 
 			for pos in self.player_pos:
 				first_index, second_index = self.convert(current_index)
-				if flag:
+				if turn_flag:
 					pygame.draw.circle(self.setting.screen, GREEN, pos, 50, 5)
-					flag = False
-					self.check_box[first_index][second_index] = 1
+					turn_flag = False
+					if undo_flag:
+						self.check_box[first_index][second_index] = 1
 				else:
 					x = pos[0]
 					y = pos[1]
 
 					pygame.draw.line(self.setting.screen, RED, (x- 50, y - 50), (x + 50, y + 50), 5)
 					pygame.draw.line(self.setting.screen, RED, (x - 50, y + 50), (x + 50, y - 50), 5)
-					flag = True
-					self.check_box[first_index][second_index] = 2
+					turn_flag = True
+					if undo_flag:
+						self.check_box[first_index][second_index] = 2
+
 					
-			
 			if self.check_win() > 0:
 				self.setting.winning_label(self.check_win())
 				self.restart()
