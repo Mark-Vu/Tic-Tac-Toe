@@ -16,21 +16,33 @@ class Setting:
 		self.size = self.WIDTH, self.HEIGHT = 550, 550
 		self.screen = pygame.display.set_mode(self.size)
 		self.winning_font = pygame.font.SysFont("monospace", 30)
+		self.player_o_score = 0
+		self.player_x_score = 0
 
 	def draw_screen(self):
 		self.screen.fill(WHITE)
 
+	def score_label(self):
+		player_o = general_font.render(f'Player 1: {self.player_o_score}', True, BLACK)
+		player_x = general_font.render(f'Player 2: {self.player_x_score}', True, BLACK)
+
+		self.screen.blit(player_o, (10, 10))
+		self.screen.blit(player_x, (10, 30))
+
 	def winning_label(self, win_player):
 		if win_player == 1:
 			win_label = self.winning_font.render("Player O win", True, GREEN, BLACK)
+			self.player_o_score += 1
 		elif win_player == 2:
 			win_label = self.winning_font.render("Player X win", True, GREEN, BLACK)
+			self.player_x_score += 1
 		elif win_player == 3:
 			win_label = self.winning_font.render("DRAW", True, RED, BLACK)
 		else:
 			win_label = self.winning_font.render("", True, RED)
 		win_label_rect = win_label.get_rect(midtop=(round(self.WIDTH / 2), 10))
 		self.screen.blit(win_label, win_label_rect)
+
 
 
 class Grid:
@@ -52,7 +64,6 @@ class Grid:
 class Main:
 	def __init__(self):
 		self.grid = Grid()
-		self.redraw = Redraw()
 		self.setting = Setting()
 		self.player_pos = []
 		self.check_box = [[0, 0, 0],
@@ -113,6 +124,40 @@ class Main:
 					return 2, index - 6
 		return None
 
+	def reset(self):
+		#reset everything back to the start
+		self.check_box = [[0, 0, 0] for i in range(3)]
+		self.player_pos = []
+
+	def hit_button(self, mouse_pos):
+		mouse_pos_x, mouse_pos_y = mouse_pos
+
+		if mouse_pos_x > 200 and mouse_pos_x < 200 + 150:
+			if mouse_pos_y > 50 and mouse_pos_y < 50 + 50:
+				return True
+		return False
+
+	def restart(self):
+		button = pygame.draw.rect(self.setting.screen, GREEN, (200, 50, 150, 50))
+		restart_label = general_font.render("Restart", True, BLACK)
+		restart_label_rect = restart_label.get_rect(midtop=(round(self.setting.WIDTH / 2), 65))
+		self.setting.screen.blit(restart_label, restart_label_rect) 
+		pygame.display.update()
+
+		res = True
+		while res:
+			for events in pygame.event.get():
+				mouse_pos = pygame.mouse.get_pos()
+				if events.type == pygame.QUIT:
+					sys.exit()
+					pygame.quit()
+
+				if events.type == pygame.MOUSEBUTTONDOWN:
+					if self.hit_button(mouse_pos):
+						res = False
+
+		self.reset()
+
 	def game_loop(self):
 		gameRun = True 
 		count = 1
@@ -121,6 +166,7 @@ class Main:
 			flag = True
 
 			self.setting.draw_screen()
+			self.setting.score_label()
 			self.grid.draw_grids(self.setting.screen)
 			mouse_pos = pygame.mouse.get_pos()
 
@@ -156,45 +202,8 @@ class Main:
 			
 			if self.check_win() > 0:
 				self.setting.winning_label(self.check_win())
-				self.redraw.restart()
-					# self.player_pos
+				self.restart()
 
-			pygame.display.update()
-
-class Redraw(Main):
-	def __init__(self):
-		self.setting = Setting()
-
-	def reset(self):
-		#reset everything back to the start
-		Main.grid = [[0, 0, 0] for i in range(3)]
-		Main.player_pos = []
-
-	def hit_button(self, mouse_pos):
-		mouse_pos_x, mouse_pos_y = mouse_pos
-
-		if mouse_pos_x > 200 and mouse_pos_x < 200 + 150:
-			if mouse_pos_y > 50 and mouse_pos_y < 50 + 50:
-				return True
-		return False
-
-	def restart(self):
-		button = pygame.draw.rect(self.setting.screen, GREEN, (200, 50, 150, 50))
-		restart_label = general_font.render("Restart", True, BLACK)
-		restart_label_rect = restart_label.get_rect(midtop=(round(self.setting.WIDTH / 2), 65))
-		self.setting.screen.blit(restart_label, restart_label_rect) 
-		
-		res = True
-		while res:
-			for events in pygame.event.get():
-				mouse_pos = pygame.mouse.get_pos()
-				if events.type == pygame.QUIT:
-					sys.exit()
-					pygame.quit()
-
-				if events.type == pygame.MOUSEBUTTONDOWN:
-					if self.hit_button(mouse_pos):
-						self.reset()
 			pygame.display.update()
 
 if __name__ == "__main__":
