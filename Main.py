@@ -7,8 +7,10 @@ pygame.init()
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
-OPAQUE_GREEN = (0, 200, 0)
+OPAQUE_GREEN = (0, 180, 0)
 RED = (255, 0, 0)
+BLUE = (0, 0, 255)
+ORANGE = (255, 165, 0)
 
 general_font = pygame.font.SysFont('Arial', 20)
 
@@ -21,6 +23,10 @@ class Setting:
 		self.winning_font = pygame.font.SysFont("monospace", 35)
 		self.player_o_score = 0
 		self.player_x_score = 0
+		self.title = "Tic Tac Toe"
+
+	def set_title(self):
+		pygame.display.set_caption(self.title)
 
 	def draw_screen(self):
 		self.screen.fill(WHITE)
@@ -33,8 +39,8 @@ class Setting:
 		self.screen.blit(player_x, (10, 30))
 
 	def reset_label(self):#reset game, score --> 0
-		button = pygame.draw.rect(self.screen, RED, (450, 10, 90, 40))
-		reset_label = general_font.render("RESET", True, BLACK)
+		button = pygame.draw.rect(self.screen, BLUE, (450, 10, 90, 40))
+		reset_label = general_font.render("RESET", True, WHITE)
 		reset_label_rect = reset_label.get_rect(topleft=(round(self.WIDTH - 85), 20))
 		self.screen.blit(reset_label, reset_label_rect)
 
@@ -46,20 +52,20 @@ class Setting:
 
 	def winning_label(self, win_player):
 		if win_player == 1:
-			win_label = self.winning_font.render("Player 1 win", True, GREEN, BLACK)
+			win_label = self.winning_font.render("Player 1 win", True, OPAQUE_GREEN)
 			self.player_o_score += 1
 		elif win_player == 2:
-			win_label = self.winning_font.render("Player 2 win", True, GREEN, BLACK)
+			win_label = self.winning_font.render("Player 2 win", True, OPAQUE_GREEN)
 			self.player_x_score += 1
 		elif win_player == 3:
-			win_label = self.winning_font.render("DRAW", True, RED, BLACK)
+			win_label = self.winning_font.render("DRAW", True, RED)
 		else:
 			win_label = self.winning_font.render("", True, RED)
 		win_label_rect = win_label.get_rect(midtop=(round(self.WIDTH / 2), 10))
 		self.screen.blit(win_label, win_label_rect)
 
 	def next_move(self, turn_flag):
-		next = self.winning_font.render("NEXT: ", True, BLACK)
+		next = self.winning_font.render("NEXT:", True, BLACK)
 
 		if turn_flag:
 			next_move_label = self.winning_font.render("O", True, OPAQUE_GREEN)
@@ -67,7 +73,7 @@ class Setting:
 			next_move_label = self.winning_font.render("X", True, RED)
 		move_label_rect = next_move_label.get_rect(topright=(self.WIDTH - 10, 61)) 
 
-		self.screen.blit(next, (self.WIDTH - 130, 60))
+		self.screen.blit(next, (self.WIDTH - 140, 60))
 		self.screen.blit(next_move_label, move_label_rect)
 
 class Grid:
@@ -144,7 +150,7 @@ class Main:
 				result.append(i)
 		return result
 
-	def convert(self, index):
+	def convert_to_2d(self, index):
 		for i in range(9):
 			if index == i:
 				if index < 3:
@@ -185,7 +191,7 @@ class Main:
 		return False
 
 	def undo(self, current_index):
-		first_index, second_index = self.convert(current_index)
+		first_index, second_index = self.convert_to_2d(current_index)
 
 		self.player_pos.pop()
 		self.check_box[first_index][second_index] = 0
@@ -226,6 +232,51 @@ class Main:
 	def change_turn(self, turn):
 		return not turn
 
+	def draw_winning_line(self):
+		index, win_how = self.index_winning_line()
+		line_width = 5
+		line_color = ORANGE
+
+		if win_how == 1:
+			if index == 0:
+				pygame.draw.line(self.setting.screen, line_color, self.grid.square[0], self.grid.square[2], line_width)
+			elif index == 1:
+				pygame.draw.line(self.setting.screen, line_color, self.grid.square[3], self.grid.square[5], line_width)
+			else:
+				pygame.draw.line(self.setting.screen, line_color, self.grid.square[6], self.grid.square[8], line_width)
+
+		elif win_how == 2:
+			if index == 0:
+				pygame.draw.line(self.setting.screen, line_color, self.grid.square[0], self.grid.square[6], line_width)
+			elif index == 1:
+				pygame.draw.line(self.setting.screen, line_color, self.grid.square[1], self.grid.square[7], line_width)
+			else:
+				pygame.draw.line(self.setting.screen, line_color, self.grid.square[2], self.grid.square[9], line_width)
+				
+		elif win_how == 3:
+			pygame.draw.line(self.setting.screen, line_color, self.grid.square[0], self.grid.square[8], line_width)
+		elif win_how == 4:
+			pygame.draw.line(self.setting.screen, line_color, self.grid.square[2], self.grid.square[6], line_width)
+
+
+	def index_winning_line(self):
+		for i in range(3):
+			if self.check_box[i][0] == self.check_box[i][1] == self.check_box[i][2]:#rows
+				if self.check_box[i][0] != 0:
+					return i, 1
+			elif self.check_box[0][i] == self.check_box[1][i] == self.check_box[2][i]:#column
+				if self.check_box[0][i] != 0:
+					return i, 2
+
+		if self.check_box[0][0] == self.check_box[1][1] == self.check_box[2][2]:#diagonal 1
+			if self.check_box[0][0] != 0:
+				return None, 3
+		if self.check_box[0][2] == self.check_box[1][1] == self.check_box[2][0]:#diagonal 2
+			if self.check_box[0][2] != 0:
+				return None, 4
+
+		return None, None
+
 	def game_loop(self):
 		gameRun = True 
 		count = 1
@@ -237,6 +288,7 @@ class Main:
 			self.grid.draw_grids(self.setting.screen)
 			self.setting.undo_label()
 			self.setting.reset_label()
+			self.setting.set_title()
 
 			mouse_pos = pygame.mouse.get_pos()
 			turn_flag = True #Take turns between x and o
@@ -272,7 +324,7 @@ class Main:
 			
 			#Draw x and o
 			for pos in self.player_pos:
-				first_index, second_index = self.convert(current_index)
+				first_index, second_index = self.convert_to_2d(current_index)
 				if turn_flag:
 					pygame.draw.circle(self.setting.screen, GREEN, pos, 50, 5)
 					turn_flag = False
@@ -287,10 +339,13 @@ class Main:
 					turn_flag = True
 					if undo_flag:
 						self.check_box[first_index][second_index] = 2
+
+			#Detect the next move
 			self.setting.next_move(turn_flag)
 					
 			if self.check_win() > 0:
 				self.setting.winning_label(self.check_win())
+				self.draw_winning_line()
 				self.restart()
 
 			pygame.display.update()
