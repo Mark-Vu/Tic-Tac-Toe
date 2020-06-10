@@ -1,2 +1,3 @@
 # Tic-Tac-Toe
-I'm learning how to make Ai that can play Tic Tac Toe
+June 7th, 2020.
+9 months into coding
