@@ -1,13 +1,12 @@
-import pygame
-import sys 
 from grid import *
 from setting import *
-
+import sys
 
 class Main:
 	def __init__(self):
 		self.grid = Grid()
 		self.setting = Setting()
+		self.pause_image = pygame.image.load('pause.png')
 		self.player_pos = []
 		self.check_box = [[0, 0, 0],
 						  [0, 0, 0],
@@ -57,16 +56,9 @@ class Main:
 				result.append(i)
 		return result
 
+	#Convert index from a 1d array to 2d
 	def convert_to_2d(self, index):
-		for i in range(9):
-			if index == i:
-				if index < 3:
-					return 0, index
-				elif index < 6:
-					return 1, index - 3
-				elif index < 9:
-					return 2, index - 6
-		return None
+		return index // 3, index % 3
 
 	def reset(self):
 		#reset everything back to the start
@@ -88,20 +80,6 @@ class Main:
 			if mouse_pos_y > 10 and mouse_pos_y < 10 + 40:
 				return True
 		return False
-
-	def hit_undo_button(self, mouse_pos):
-		mouse_pos_x, mouse_pos_y = mouse_pos
-
-		if mouse_pos_x > 10 and mouse_pos_x < 10 + 80:
-			if mouse_pos_y > 60 and mouse_pos_y < 60 + 30:
-				return True
-		return False
-
-	def undo(self, current_index):
-		first_index, second_index = self.convert_to_2d(current_index)
-
-		self.player_pos.pop()
-		self.check_box[first_index][second_index] = 0
 
 	def restart(self): #Click on restart and add score
 		button = pygame.draw.rect(self.setting.screen, GREEN, (200, 50, 150, 50))
@@ -135,6 +113,7 @@ class Main:
 		self.reset()
 		self.setting.player_o_score = 0
 		self.setting.player_x_score = 0
+		self.setting.tie = 0
 
 	def change_turn(self, turn):
 		return not turn
@@ -144,21 +123,12 @@ class Main:
 		line_width = 5
 		line_color = ORANGE
 
-		if win_how == 1:
-			if index == 0:
-				pygame.draw.line(self.setting.screen, line_color, self.grid.square[0], self.grid.square[2], line_width)
-			elif index == 1:
-				pygame.draw.line(self.setting.screen, line_color, self.grid.square[3], self.grid.square[5], line_width)
-			else:
-				pygame.draw.line(self.setting.screen, line_color, self.grid.square[6], self.grid.square[8], line_width)
+		if win_how == 1:#Horizontal line
+			first_index = index * 3
+			pygame.draw.line(self.setting.screen, line_color, self.grid.square[first_index], self.grid.square[first_index + 2], line_width)
 
-		elif win_how == 2:
-			if index == 0:
-				pygame.draw.line(self.setting.screen, line_color, self.grid.square[0], self.grid.square[6], line_width)
-			elif index == 1:
-				pygame.draw.line(self.setting.screen, line_color, self.grid.square[1], self.grid.square[7], line_width)
-			else:
-				pygame.draw.line(self.setting.screen, line_color, self.grid.square[2], self.grid.square[8], line_width)
+		elif win_how == 2:#Vertical line
+			pygame.draw.line(self.setting.screen, line_color, self.grid.square[index], self.grid.square[index + 6], line_width)
 				
 		elif win_how == 3:
 			pygame.draw.line(self.setting.screen, line_color, self.grid.square[0], self.grid.square[8], line_width)
@@ -184,18 +154,26 @@ class Main:
 
 		return None, None
 
-	def game_loop(self):
-		gameRun = True 
-		count = 1
-		undo_flag = True
+	def draw_pause(self):
+		self.setting.screen.blit(self.pause_image, (412, 14))
+
+	def hit_pause(self, mouse_pos):
+		mouse_pos_x, mouse_pos_y = mouse_pos
+		if mouse_pos_x > 412 and mouse_pos_x < self.pause_image.get_width() + 412:
+			if mouse_pos_y > 14 and mouse_pos_y < 14 + self.pause_image.get_width():
+				return True
+		return False
+
+	def bot_game_loop(self):
+		gameRun = True
 
 		while gameRun:
 			self.setting.draw_screen()
-			self.setting.score_label()
+			self.setting.score_label("Player", "Bot")
 			self.grid.draw_grids(self.setting.screen)
-			self.setting.undo_label()
 			self.setting.reset_label()
 			self.setting.set_title()
+			self.draw_pause()
 
 			mouse_pos = pygame.mouse.get_pos()
 			turn_flag = True #Take turns between x and o
@@ -218,34 +196,21 @@ class Main:
 						#Get the position of the square associated with mouse_pos
 						mouse_pos_clone = self.grid.square[current_index]
 						self.player_pos.append(mouse_pos_clone)
-						#Undo available when you place a move
-						undo_flag = True
-					
-					if self.hit_undo_button(mouse_pos):
-						if len(self.player_pos) > 0:
-							if undo_flag:
-								undo_flag = False
-								self.undo(current_index)
+
+					if self.hit_pause(mouse_pos):
+						menu.menu()
+
 			#remove duplicate(preventing draw x on o or the other way around)
 			self.player_pos = self.non_duplicate(self.player_pos)
 			
 			#Draw x and o
-			for pos in self.player_pos:
-				first_index, second_index = self.convert_to_2d(current_index)
-				if turn_flag:
-					pygame.draw.circle(self.setting.screen, GREEN, pos, 50, 5)
-					turn_flag = False
-					if undo_flag:
+			if len(self.player_pos) > 0:
+				for pos in self.player_pos:
+					first_index, second_index = self.convert_to_2d(current_index)
+					if turn_flag:
+						pygame.draw.circle(self.setting.screen, GREEN, pos, 50, 5)
 						self.check_box[first_index][second_index] = 1
-				else:
-					x = pos[0]
-					y = pos[1]
-
-					pygame.draw.line(self.setting.screen, RED, (x- 50, y - 50), (x + 50, y + 50), 5)
-					pygame.draw.line(self.setting.screen, RED, (x - 50, y + 50), (x + 50, y - 50), 5)
-					turn_flag = True
-					if undo_flag:
-						self.check_box[first_index][second_index] = 2
+						turn_flag = False
 
 			#Detect the next move
 			self.setting.next_move(turn_flag)
@@ -257,6 +222,141 @@ class Main:
 
 			pygame.display.update()
 
+
+	def players_game_loop(self):
+		gameRun = True 
+
+		while gameRun:
+			self.setting.draw_screen()
+			self.setting.score_label("Player 1", "Player 2")
+			self.grid.draw_grids(self.setting.screen)
+			self.setting.reset_label()
+			self.setting.set_title()
+			self.draw_pause()
+
+			mouse_pos = pygame.mouse.get_pos()
+			turn_flag = True #Take turns between x and o
+			#If hit restart --> swap turn
+			if self.turn_swap:
+				turn_flag = self.change_turn(turn_flag)
+
+			for events in pygame.event.get():
+				if events.type == pygame.QUIT:
+					sys.exit()
+					pygame.quit()
+
+				if events.type == pygame.MOUSEBUTTONDOWN:
+					if self.hit_pause(mouse_pos):
+						menu.menu()
+
+					if self.hit_reset_button(mouse_pos):
+						self.reset_game()
+
+					if self.hit_square(mouse_pos)[0]:
+						#Get the index of mouse_pos if you hit a square(made by grids)
+						_, current_index = self.hit_square(mouse_pos)
+						#Get the position of the square associated with mouse_pos
+						mouse_pos_clone = self.grid.square[current_index]
+						self.player_pos.append(mouse_pos_clone)
+
+			#remove duplicate(preventing draw x on o or the other way around)
+			self.player_pos = self.non_duplicate(self.player_pos)
+			
+			#Draw x and o
+			if len(self.player_pos) > 0:
+				for pos in self.player_pos:
+					first_index, second_index = self.convert_to_2d(current_index)
+					if turn_flag:
+						pygame.draw.circle(self.setting.screen, GREEN, pos, 50, 5)
+						self.check_box[first_index][second_index] = 1
+						turn_flag = False
+					else:
+						x = pos[0]
+						y = pos[1]
+
+						pygame.draw.line(self.setting.screen, RED, (x- 50, y - 50), (x + 50, y + 50), 5)
+						pygame.draw.line(self.setting.screen, RED, (x - 50, y + 50), (x + 50, y - 50), 5)
+						self.check_box[first_index][second_index] = 2
+						turn_flag = True
+
+			#Detect the next move
+			self.setting.next_move(turn_flag)
+					
+			if self.check_win() > 0:
+				self.setting.winning_label(self.check_win())
+				self.draw_winning_line()
+				self.restart()
+
+			pygame.display.update()
+
+
+class Menu:
+	def __init__(self):
+		self.setting = Setting()
+		self.main = Main()
+		self.font = pygame.font.Font('gameFont.ttf', 50)
+	
+	def game_title(self):
+		game_label = self.font.render('Tic Tac Toe', True, BLACK)
+		self.setting.screen.blit(game_label, [55, 50])
+
+	def players_button(self):
+		button = pygame.draw.rect(self.setting.screen, BLACK, (175, 300, 200, 70))
+		players_label = general_font.render("2 Players", True, WHITE)
+		self.setting.screen.blit(players_label, [235, 325])
+
+	def bot_button(self):
+		button = pygame.draw.rect(self.setting.screen, BLACK, (175, 175, 200, 70))
+		bot_label = general_font.render("VS Bot", True, WHITE)
+		self.setting.screen.blit(bot_label, [243, 200])
+
+	def player_button_hit(self, mouse_pos):
+		mouse_pos_x, mouse_pos_y = mouse_pos
+
+		if mouse_pos_x > 175 and mouse_pos_x < 175 + 200:
+			if mouse_pos_y > 300 and mouse_pos_y < 300 + 70:
+				return True
+		return False
+
+	def bot_button_hit(self, mouse_pos):
+		mouse_pos_x, mouse_pos_y = mouse_pos
+
+		if mouse_pos_x > 175 and mouse_pos_x < 175 + 200:
+			if mouse_pos_y > 175 and mouse_pos_y < 175 + 70:
+				return True
+		return False
+
+	def menu(self):
+		run = True
+
+		while run:
+			self.setting.screen.fill(WHITE)
+			mouse_pos = pygame.mouse.get_pos()
+			self.bot_button()
+			self.players_button()
+			self.game_title()
+
+			for events in pygame.event.get():
+				if events.type == pygame.QUIT:
+					sys.exit()
+					pygame.quit()
+				
+				if events.type == pygame.MOUSEBUTTONDOWN:
+					if self.player_button_hit(mouse_pos):
+						self.main.reset_game()
+						self.main.players_game_loop()
+						run = False
+
+					if self.bot_button_hit(mouse_pos):
+						self.main.reset_game()
+						self.main.bot_game_loop()
+						run = False
+
+			pygame.display.update()
+
 if __name__ == "__main__":
-	main = Main()
-	main.game_loop()
+	menu = Menu()
+	menu.menu()
+
+# main = Main()
+# main.players_game_loop()
